@@ -1,8 +1,8 @@
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.io.*;
-import java.util.Arrays;
 
+@SuppressWarnings("ALL")
 public class DayThree {
     public static void partOne() throws Exception {
         // Read in the map as a grid
@@ -45,7 +45,7 @@ public class DayThree {
             answers.add(answer);
             System.out.printf("In slope %3.2f collisions = %d%n", (double)slopes[i+1]/slopes[i], answer);
         }
-        // The result is a number too big to fit into an integer so we must use a special class
+        // The result is a number too big to fit into an integer, so we must use a special class
         BigInteger product = new BigInteger("1");
         for(var num : answers)
             product = product.multiply(new BigInteger(String.valueOf(num)));
