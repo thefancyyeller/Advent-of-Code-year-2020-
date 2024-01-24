@@ -20,72 +20,51 @@ public class DayFour {
     public static void partTwo() throws Exception{
         var data = readFile();
         int validCount = 0;
+        // We are gonna verify each part of the passport and call 'continue' if we deem it invalid
         for(var passport : data){
-            if(hasFields(passport) == false)
+            // Check if the passport has required fields
+            if(!hasFields(passport))
                 continue;
-            // Verify the years
-            try {
-                // Verify birth year
-                int birthYear = Integer.parseInt(passport.get("byr"));
-                if(birthYear < 1920 || birthYear > 2002){
-                    continue;
-                }
-                // Verify issue year
-                int issYear = Integer.parseInt(passport.get("iyr"));
-                if(issYear < 2010 || issYear > 2020){
-                    continue;
-                }
-                // Verify exp year
-                int expYear = Integer.parseInt(passport.get("eyr"));
-                if(expYear < 2020 || expYear > 2030){
-                    continue;
-                }
-            } catch(NumberFormatException err){
-                continue;// fires off when we get an entry that cannot be read as a number (invalid format)
-            }
-            // If the code reaches here, we have verified the years. Time for height
+            // Verify the fields that are years
+            if(invalidNumberField(passport.get("byr"), 1920, 2002))
+                continue;
+            if(invalidNumberField(passport.get("iyr"), 2010, 2020))
+                continue;
+            if(invalidNumberField(passport.get("eyr"), 2020, 2030))
+                continue;
+            // Verify the height
             String heightField = passport.get("hgt");
             if(heightField.length() < 3)
                 return;
             String heightUnit = heightField.substring(heightField.length()-2);
+            Integer numPart = parseIntNullable(heightField.substring(0, heightField.length()-2));
+            if(numPart == null)
+                continue;
+            int lowerBound = -1; // These will be given a value in the code below...
+            int upperBound = -1;
             if(heightUnit.equals("cm")){
-                try{
-                    int numPart = Integer.parseInt(heightField.substring(0, heightField.length()-2));
-                    if(numPart < 150 || numPart > 193){
-                        continue;
-                    }
-                }catch(NumberFormatException e){
-                    System.out.println("Invalid height " + heightField);
-                    continue;
-                }
+                lowerBound = 150;
+                upperBound = 193;
             }
             else if(heightUnit.equals("in")){
-                try{
-                    int numPart = Integer.parseInt(heightField.substring(0, heightField.length()-2));
-                    if(numPart < 59 || numPart > 76){
-                        System.out.println("Invalid height " + heightField);
-                        continue;
-                    }
-                }catch(NumberFormatException e){
-                    System.out.println("Invalid height " + heightField);
-                    continue;
-                }
-            }else{
+                lowerBound = 59;
+                upperBound = 76;
+            }else{ // Else, if the units are invalid, continue.
                 continue;
             }
+            if(!inRange(numPart, lowerBound, upperBound))
+                continue;
+
             // Validate hair color
             var hairField = passport.get("hcl");
-            if(hairField.length() != 7){
+            if(hairField.length() != 7)
                 continue;
-            }
-            if(hairField.charAt(0) != '#'){
-                System.out.println("No # in field " + hairField);
+            if(hairField.charAt(0) != '#')
                 continue;
-            }
+            // Regex is a shortcut you do not need. Just verify it starts with a # then has 6 characters after that are 0-9 or a-f
             Pattern hairPattern = Pattern.compile("#[0-9a-f]{6}");
-            if(!hairPattern.matcher(hairField).matches()){
+            if(!hairPattern.matcher(hairField).matches())
                 continue;
-            }
             // Validate eye color
             var eyeField = passport.get("ecl");
             String[] allowedColors = {"amb", "blu", "brn", "gry", "grn", "hzl", "oth"};
@@ -96,7 +75,7 @@ public class DayFour {
                     break;
                 }
             }
-            if(eyeIsValid == false)
+            if(!eyeIsValid)
                 continue;
 
             // Validate passport ID
@@ -105,12 +84,12 @@ public class DayFour {
             if(passportId.length() != 9)
                 continue;
             for(var c : passportId.toCharArray()){
-                if(Character.isDigit(c) == false){
+                if(!Character.isDigit(c)){
                     validPassport = false;
                     break;
                 }
             }
-            if(validPassport == false)
+            if(!validPassport)
                 break;
 
             // Finally, we have a valid passport.
@@ -118,14 +97,33 @@ public class DayFour {
         }
         System.out.printf("Valid count: %d%n",validCount);
     }
+    // Takes a string, returns true if it is either an invalid number or if it is outside the allowed bounds.
+    private static boolean invalidNumberField(String field, int min, int max){
+        Integer readNum = parseIntNullable(field);
+        if(readNum == null)
+            return true;
+        return !inRange(readNum, min, max);
+    }
     private static boolean hasFields(HashMap<String, String> passport){
         String[] requiredFields = {"byr","iyr","eyr","hgt","hcl","ecl","pid"};
         for(var field : requiredFields){
-            if(passport.containsKey(field) == false){
+            if(!passport.containsKey(field)){
                 return false;
             }
         }
         return true;
+    }
+    // Tries to convert string to integer. Returns null if it can't
+    private static Integer parseIntNullable(String numString){
+        try{
+            return Integer.parseInt(numString);
+        } catch(NumberFormatException err){
+            return null;
+        }
+    }
+    // Checks if number is in range.
+    private static boolean inRange(int num, int min, int max){
+        return (num >= min && num <= max);
     }
     // Reads the file. Turns each passport into a HashMap, which is simply a collection of attributes and values. google "what is a hash map"
     private static ArrayList<HashMap<String, String>> readFile() throws Exception{
@@ -133,28 +131,32 @@ public class DayFour {
         var infile = new BufferedReader(new FileReader("./data/day_four.txt"));
         var line = "";
 
-        String buffer = ""; // We will fill this with 1 passport's worth of data at a time.
+        StringBuilder buffer = new StringBuilder(); // We will fill this with 1 passport's worth of data at a time.
         // Step 1, read 1 passport's worth of data
         while((line = infile.readLine())!=null){
-            if(line.isEmpty() == false){ // If the line isnt empty, add a space then write it to the buffer
-                if(buffer.isEmpty() == false)
-                    buffer += " ";
-                buffer += line;
+            if(!line.isEmpty()){ // If the line isn't empty, add a space then write it to the buffer
+                if(!buffer.isEmpty())
+                    buffer.append(" ");
+                buffer.append(line);
                 continue;
             }
             // We reach here once the buffer contains 1 passport worth of data.
-            String[] entries = buffer.split(" ");// Grab each entry
-            HashMap<String, String> passportInfo = new HashMap<String, String>();
-            for(var entry : entries){
-                // Extract the attribute and its value. Add it to the passportInfo
-                String[] split = entry.split(":");
-                assert(split.length == 2);
-                passportInfo.put(split[0], split[1]);
-            }
+            HashMap<String, String> passportInfo = bufferToHashMap(buffer);
             // Add the passport info into output
             passports.add(passportInfo);
-            buffer = ""; //reset the buffer
+            buffer = new StringBuilder(); //reset the buffer
         }
         return passports;
+    }
+    private static HashMap<String, String> bufferToHashMap(StringBuilder buffer) {
+        String[] entries = buffer.toString().split(" ");// Grab each entry
+        HashMap<String, String> passportInfo = new HashMap<String, String>();
+        for(var entry : entries){
+            // Extract the attribute and its value. Add it to the passportInfo
+            String[] split = entry.split(":");
+            assert(split.length == 2);
+            passportInfo.put(split[0], split[1]);
+        }
+        return passportInfo;
     }
 }
